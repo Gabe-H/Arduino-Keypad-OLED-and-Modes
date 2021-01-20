@@ -20,6 +20,9 @@ char keys[ROWS][COLS] = {
 {'0','1','2','3','4'}
 };
 
+char modeUp = '9';
+char modeDown = '4';
+
 
 byte rowPins[ROWS] = {16, 10}; //connect to the row pinouts of the kpd
 byte colPins[COLS] = {9, 8, 7, 6, 5}; //connect to the column pinouts of the kpd
@@ -43,34 +46,6 @@ String msg;
 
 unsigned long showTime;
 
-
-void showMode() {
-  EEPROM.write(0, mode);
-
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(0, 0);
-  display.println(modes[mode]);
-  
-  display.println();
-  for (int i=0; i<NUM_MODES; i++)
-  {
-    if (i == mode)
-    {
-      display.setTextSize(2);
-      display.print(i+1);
-      display.setTextSize(1);
-      display.print(" ");
-    }
-    else
-    {
-      display.setTextSize(1);
-      display.print(i+1);
-      display.print(" ");
-    }
-  }
-  display.display();
-}
 
 void handlePress(char key) {
   switch (mode) {
@@ -147,8 +122,36 @@ void handlePress(char key) {
   Keyboard.releaseAll();
 }
 
+void showMode() {
+  EEPROM.write(0, mode);
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  display.println(modes[mode]);
+  
+  display.println();
+  for (int i=0; i<NUM_MODES; i++)
+  {
+    if (i == mode)
+    {
+      display.setTextSize(2);
+      display.print(i+1);
+      display.setTextSize(1);
+      display.print(" ");
+    }
+    else
+    {
+      display.setTextSize(1);
+      display.print(i+1);
+      display.print(" ");
+    }
+  }
+  display.display();
+}
+
 void changeMode(char modeChar) {
-  if (modeChar == '9')
+  if (modeChar == modeUp)
   {
     if (mode < NUM_MODES-1)
     {
@@ -161,7 +164,7 @@ void changeMode(char modeChar) {
       showMode();
     }
   }
-  else if (modeChar == '4')
+  else if (modeChar == modeDown)
   {
     if (mode >= 1)
     {
@@ -206,7 +209,7 @@ void setup() {
 void loop() {
   if (holding)
   {
-    if (holdChar == '4' || holdChar == '9')
+    if (holdChar == modeDown || holdChar == modeUp)
     {
       if ((millis()-holdTimer)>500)
       {
@@ -238,7 +241,7 @@ void loop() {
           msg = " PRESSED.";
           pressed = true;
             // Press single function buttons
-          if (kpd.key[i].kchar != '9' && kpd.key[i].kchar != '4')
+          if (kpd.key[i].kchar != modeUp && kpd.key[i].kchar != modeDown)
           {
             handlePress(kpd.key[i].kchar);
           }
@@ -258,7 +261,7 @@ void loop() {
           holding = false;
           if (pressed)
           {
-            if (kpd.key[i].kchar == '9' || kpd.key[i].kchar == '4')
+            if (kpd.key[i].kchar == modeUp || kpd.key[i].kchar == modeDown)
             {
               handlePress(kpd.key[i].kchar);
             }
