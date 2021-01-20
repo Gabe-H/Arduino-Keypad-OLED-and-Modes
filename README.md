@@ -1,5 +1,5 @@
 # Arduino-Keypad-OLED-and-Modes
-<img width="500" src="https://cdn.discordapp.com/attachments/699865498052984913/801533705235333170/IMG_1425.JPG" alt="example" />
+<img width="500" src="https://github.com/Gabe-H/Arduino-Keypad-OLED-and-Modes/blob/master/images/IMG_1425.jpg?raw=true" alt="example" />
 ## Requirements
 - PlatformIO
 - Arduino Leonard, Pro Micro or other ATMEGA32u4 board
