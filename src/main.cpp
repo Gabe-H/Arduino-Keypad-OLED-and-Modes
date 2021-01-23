@@ -8,180 +8,187 @@
 #include <HID-Project.h>
 #include <EEPROM.h>
 
+/***********************************************
+ * Arduino Keypad with OLED and Modes
+ * by Gabe Haarberg
+ * 
+ * For customization, change the keypad and mode settings on the next few lines,
+ * and specific commands further down in `determineKey()`. Refer to HID-Project
+ * docs for keybind syntax.
+ * 
+ * @note ON THE FIRST UPLOAD uncomment the EEPROM clearing. 
+ * 
+ **********************************************/
+
 #define KNOB_BUTTON A0
+#define KNOB_CLK 15
+#define KNOB_DT 14
 
-#define ROWS 2 // two rows
-#define COLS 5 // five columns
+#define ROWS 2 // Rows of buttons
+#define COLS 5 // Columns of buttons
+#define SCREENSAVER_TIMEOUT 2500 // Timeout until screensaver (ms)
 
-#define NUM_MODES 6
+#define NUM_MODES 6 // Number of modes. MORE THAN 11 NOT RECOMMENDED
 
+// Names of each mode
 char modes[NUM_MODES][20] = { "Discord", "Media", "Volume", "Numbers", "Lower F", "Upper F" };
 
+// Keypad button definitions
 char keys[ROWS][COLS] = {
 {'5','6','7','8','9'},
 {'0','1','2','3','4'}
 };
 
-byte rowPins[ROWS] = {16, 10}; // connect to the row pinouts of the kpd
-byte colPins[COLS] = {9, 8, 7, 6, 5}; // connect to the column pinouts of the kpd
+byte rowPins[ROWS] = {16, 10}; // Connections for the row pinouts of the kpd
+byte colPins[COLS] = {9, 8, 7, 6, 5}; // Connections for the column pinouts of the kpd
 
-uint8_t activeModes[NUM_MODES] = { 0, 0, 0, 0, 0, 0 };
-uint8_t activeRow = 0;
+uint8_t activeModes[ROWS] = { 0, 0 }; // Store the active mode for each row
+uint8_t activeRow = 0;      // Row that is/was being edited
 
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 Adafruit_SSD1306 display(128, 64, &Wire);
-Encoder enc(15, 14);
+Encoder enc(KNOB_CLK, KNOB_DT);
 
-String msg;
-int oldButtonState;
+String msg; // Placeholder for Serial output per action
+int oldButtonState; // Global placeholders
 long oldKnobPosition;
 bool editMode;
 unsigned long displayTimeout;
 
+// Makes button actions with the Keyboard library
 void keyPress(KeyboardKeycode key, bool press) {
-  if (press)
-  {
-    Keyboard.press(key);
-  }
-  else
-  {
-    Keyboard.release(key);
-  }
+  if (press) Keyboard.press(key);
+  else Keyboard.release(key);
 }
 
+// Makes button actions with the Consumer library
 void consumerPress(ConsumerKeycode key, bool press) {
-  if (press)
-  {
-    Consumer.press(key);
-  }
-  else
-  {
-    Consumer.release(key);
-  }
+  if (press) Consumer.press(key);
+  else Consumer.release(key);
 }
+
+/**************************************
+ * Set your macros here!
+ * @note Depending on the key use keyPress() or consumerPress().
+ *  For the most part, keys typically on a keyboard will
+ *  use keyPress(), and extra keys (media) will use
+ *  consumerPress().
+ * @note Only make integer cases for each *column* in your keypad,
+ *  not every key on the pad.
+ * 
+ * You may always refer to the HID-Project docs for further
+ * clarification
+ *************************************/
 
 void determineKey(char key, bool press) {
-  uint8_t rowMode = 0;
-  // Get what row the key is in
+  uint8_t keyRow;
+  uint8_t keyCol;
+  // Get the key's column and row
   for (int r=0; r<ROWS; r++)
   {
     for (int c=0; c<COLS; c++)
     {
       if (key == keys[r][c])
       {
-        rowMode = r;
+        keyRow = r;
+        keyCol = c;
       }
     }
   }
   // Activate based on the row's mode
-  switch(activeModes[rowMode])
+  switch(activeModes[keyRow])
   {
     // Discord
     case 0:
-      switch (key)
+      switch (keyCol)
       {
-        case '0': case '5': keyPress(KEY_F13, press);
-          break;
-        case '1': case '6': keyPress(KEY_F14, press);
-          break;
-        case '2': case '7': keyPress(KEY_F15, press);
-          break;
-        case '3': case '8': keyPress(KEY_F16, press);
-          break;
-        case '4': case '9': keyPress(KEY_F17, press);
-          break;
+        case 0: keyPress(KEY_F13, press); break;
+        case 1: keyPress(KEY_F14, press); break;
+        case 2: keyPress(KEY_F15, press); break;
+        case 3: keyPress(KEY_F16, press); break;
+        case 4: keyPress(KEY_F17, press); break;
       }
       break;
     // Media
     case 1:
-      switch (key)
+      switch (keyCol)
       {
-        case '0': case '5': consumerPress(MEDIA_REWIND, press);
-          break;
-        case '1': case '6': consumerPress(MEDIA_PREVIOUS, press);
-          break;
-        case '2': case '7': consumerPress(MEDIA_PLAY_PAUSE, press);
-          break;
-        case '3': case '8': consumerPress(MEDIA_NEXT, press);
-          break;
-        case '4': case '9': consumerPress(MEDIA_FAST_FORWARD, press);
-          break;
+        case 0: consumerPress(MEDIA_REWIND, press); break;
+        case 1: consumerPress(MEDIA_PREVIOUS, press); break;
+        case 2: consumerPress(MEDIA_PLAY_PAUSE, press); break;
+        case 3: consumerPress(MEDIA_NEXT, press); break;
+        case 4: consumerPress(MEDIA_FAST_FORWARD, press); break;
       }
       break;
     // Volume
     case 2:
       switch (key)
       {
-        case '0': case '5': consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press);
-          break;
-        case '1': case '6': consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press);
-          break;
-        case '2': case '7': consumerPress(HID_CONSUMER_MUTE, press);
-          break;
-        case '3': case '8': consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press);
-          break;
-        case '4': case '9': consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press);
-          break;
+        case 0: consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press); break;
+        case 1: consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press); break;
+        case 2: consumerPress(HID_CONSUMER_MUTE, press); break;
+        case 3: consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press); break;
+        case 4: consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press); break;
       }
       break;
     // Numbers
     case 3:
       switch (key)
       {
-        case '0': case '5': keyPress(KEY_1, press);
-          break;
-        case '1': case '6': keyPress(KEY_2, press);
-          break;
-        case '2': case '7': keyPress(KEY_3, press);
-          break;
-        case '3': case '8': keyPress(KEY_4, press);
-          break;
-        case '4': case '9': keyPress(KEY_5, press);
-          break;
+        case 0: keyPress(KEY_1, press); break;
+        case 1: keyPress(KEY_2, press); break;
+        case 2: keyPress(KEY_3, press); break;
+        case 3: keyPress(KEY_4, press); break;
+        case 4: keyPress(KEY_5, press); break;
       }
       break;
     // Lower F
     case 4:
       switch (key)
       {
-        case '0': case '5': keyPress(KEY_F1, press);
-          break;
-        case '1': case '6': keyPress(KEY_F2, press);
-          break;
-        case '2': case '7': keyPress(KEY_F3, press);
-          break;
-        case '3': case '8': keyPress(KEY_F4, press);
-          break;
-        case '4': case '9': keyPress(KEY_F5, press);
-          break;
+        case 0: keyPress(KEY_F1, press); break;
+        case 1: keyPress(KEY_F2, press); break;
+        case 2: keyPress(KEY_F3, press); break;
+        case 3: keyPress(KEY_F4, press); break;
+        case 4: keyPress(KEY_F5, press); break;
       }
       break;
     // Upper F
     case 5:
       switch (key)
       {
-        case '0': case '5': keyPress(KEY_F8, press);
-          break;
-        case '1': case '6': keyPress(KEY_F9, press);
-          break;
-        case '2': case '7': keyPress(KEY_F10, press);
-          break;
-        case '3': case '8': keyPress(KEY_F11, press);
-          break;
-        case '4': case '9': keyPress(KEY_F12, press);
-          break;
+        case 0: keyPress(KEY_F8, press); break;
+        case 1: keyPress(KEY_F9, press); break;
+        case 2: keyPress(KEY_F10, press); break;
+        case 3: keyPress(KEY_F11, press); break;
+        case 4: keyPress(KEY_F12, press); break;
       }
       break;
   }
 }
 
+// Index 0 is for the editing row, all following bytes are
+//  used for the active mode of each row
+void saveEEPROM() {
+  EEPROM.write(0, activeRow);
+  
+  for (int i=0; i<ROWS; i++)
+  {
+    EEPROM.write(i+1, activeModes[i]);
+  }
+}
+
+// Shows the editing data on the screen.
+// Uses '-' and 'O' like a slider:
+// O----, --O--, ---O-
 void refreshDisplay() {
-  editMode = true;
+  // Reset all writing parameters
   display.clearDisplay();
   display.setTextSize(2);
   display.setCursor(0, 0);
   display.println(modes[activeModes[activeRow]]);
 
+  // The active editing row will be larger than the other row(s)
   for (int d=0; d<ROWS; d++)
   {
     if (d == activeRow) display.setTextSize(2);
@@ -200,10 +207,15 @@ void refreshDisplay() {
     }
     display.println();
   }
+
+  editMode = true; // Start screensaver timer
   displayTimeout = millis();
-  display.display();
+  saveEEPROM(); // Save new settings to EEPROM
+  display.display(); // Update the display
 }
 
+// On key state change, iterate and perform press or release
+//  for the active key
 void handleKeys() {
   if (kpd.getKeys())
   {
@@ -216,15 +228,9 @@ void handleKeys() {
             msg = " PRESSED.";
             determineKey(kpd.key[i].kchar, true);
           break;
-          case HOLD:
-            msg = " HOLD.";
-          break;
           case RELEASED:
             msg = " RELEASED.";
             determineKey(kpd.key[i].kchar, false);
-          break;
-          case IDLE:
-            msg = " IDLE.";
           break;
         }
 
@@ -236,20 +242,13 @@ void handleKeys() {
   }
 }
 
-void saveEEPROM() {
-  EEPROM.write(0, activeRow);
-  
-  for (int i=0; i<ROWS; i++)
-  {
-    EEPROM.write(i+1, activeModes[i]);
-  }
-}
-
+// Function dedicated to rotary encoder logic
 void handleKnob() {
+  // Setup new reading variables
   long newKnobPosition = enc.read();
   int newButtonState = digitalRead(KNOB_BUTTON);
 
-  if (newKnobPosition - oldKnobPosition == 4)
+  if (newKnobPosition - oldKnobPosition == 4) // Was turned 1 click clockwise
   {
     if (editMode)
     {
@@ -262,7 +261,7 @@ void handleKnob() {
     
     oldKnobPosition = newKnobPosition;
   }
-  if (newKnobPosition - oldKnobPosition == -4)
+  if (newKnobPosition - oldKnobPosition == -4) // Was turned 1 click counter-clockwise
   {
     if (editMode)
     {
@@ -275,6 +274,7 @@ void handleKnob() {
     
     oldKnobPosition = newKnobPosition;
   }
+  // Button logic
   if (newButtonState != oldButtonState)
   {
     if (newButtonState == LOW)
@@ -292,6 +292,9 @@ void handleKnob() {
   oldButtonState = newButtonState;
 }
 
+// Shows only the active modes for each row, top to bottom.
+// By standard will only have capacity for 3 rows, but delete the
+// first display.println(), and change display.setTextSize(1); for more capacity
 void screenSaver() {
   display.clearDisplay();
   display.setCursor(0, 0);
@@ -309,14 +312,20 @@ void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   EEPROM.begin();
 
-  pinMode(KNOB_BUTTON, INPUT_PULLUP);
-  oldKnobPosition = enc.read();
+  // // UNCOMMENT THE NEXT LINES ON THE FIRST UPLOAD
+  //
   // for (int i=0; i<16; i++)
   // {
   //   EEPROM.write(i, 0x00);
   // }
+  //
+  // // END FIRST UPLOAD UNCOMMENT
+
+  pinMode(KNOB_BUTTON, INPUT_PULLUP);
+  oldKnobPosition = enc.read();
   activeRow = EEPROM.read(0);
 
+  // Get saved modes per row
   for (int i=0; i<ROWS; i++)
   {
     uint8_t read = EEPROM.read(i+1);
@@ -324,16 +333,14 @@ void setup() {
     else activeModes[i] = 0;
   }
 
-  display.clearDisplay();
-  display.display();
-  delay(500);
+  // Initiate SSD1306 OLED
   display.clearDisplay();
   display.display();
 
   display.setTextColor(SSD1306_WHITE);
   screenSaver();
 
-  displayTimeout = millis();
+  displayTimeout = millis(); // Start screensaver timer
   Keyboard.begin();
   Consumer.begin();
   Serial.begin(9600);
@@ -343,14 +350,11 @@ void loop() {
   handleKeys();
   handleKnob();
   
-  if (editMode)
+  // If the display is being edited and it has been more than the specified ms
+  if (editMode && (millis() - displayTimeout) > SCREENSAVER_TIMEOUT)
   {
-    if ((millis() - displayTimeout) > 2500)
-    {
-      Serial.println("Screen saver");
-      saveEEPROM();
-      screenSaver();
-      editMode = false;
-    }
+    Serial.println("Screen saver");
+    screenSaver();
+    editMode = false;
   }
 }
