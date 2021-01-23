@@ -31,8 +31,10 @@
 
 #define NUM_MODES 6 // Number of modes. MORE THAN 10 NOT RECOMMENDED
 
+// #define USE_SERIAL true // Uncomment for verbose keying. Tends to lead to performance issues.
+
 /* Name your modes here! */
-char modes[NUM_MODES][20] = { "Discord", "Media", "Volume", "Numbers", "Lower F", "Upper F" };
+const char modes[NUM_MODES][20] = { "Discord", "Media", "Volume", "Numbers", "Lower F", "Upper F" };
 
 // Keypad button definitions
 char keys[ROWS][COLS] = {
@@ -236,9 +238,11 @@ void handleKeys() {
           break;
         }
 
+        #ifdef USE_SERIAL
         Serial.print("Key ");
         Serial.print(kpd.key[i].kchar);
         Serial.println(msg);
+        #endif
       }
     }
   }
@@ -254,7 +258,6 @@ void handleKnob() {
   {
     if (editMode)
     {
-      Serial.println("UP");
       activeModes[activeRow]++;
       if (activeModes[activeRow] > NUM_MODES-1) activeModes[activeRow] = 0;
       refreshDisplay();
@@ -274,7 +277,6 @@ void handleKnob() {
   {
     if (editMode)
     {
-      Serial.println("DOWN");
       activeModes[activeRow]--;
       if (activeModes[activeRow] < 0) activeModes[activeRow] = NUM_MODES-1;
       refreshDisplay();
@@ -297,7 +299,6 @@ void handleKnob() {
     {
       if (editMode)
       {
-        Serial.println("Button pressed");
         activeRow++;
         if (activeRow > ROWS-1) activeRow = 0;
       }
@@ -360,7 +361,9 @@ void setup() {
   displayTimeout = millis(); // Start screensaver timer
   Keyboard.begin();
   Consumer.begin();
-  Serial.begin(9600);
+  #ifdef USE_SERIAL
+    Serial.begin(9600);
+  #endif
 }
 
 void loop() {
@@ -370,7 +373,6 @@ void loop() {
   // If the display is being edited and it has been more than the specified ms
   if (editMode && (millis() - displayTimeout) > SCREENSAVER_TIMEOUT)
   {
-    Serial.println("Screen saver");
     screenSaver();
   }
 }
