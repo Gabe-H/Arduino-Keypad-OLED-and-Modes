@@ -27,10 +27,11 @@
 #define ROWS 2 // Rows of buttons
 #define COLS 5 // Columns of buttons
 #define SCREENSAVER_TIMEOUT 2500 // Timeout until screensaver (ms)
+#define ENCODER_AS_VOLUME true // Will use encoder for volume when on idle, press to enter editing
 
-#define NUM_MODES 6 // Number of modes. MORE THAN 11 NOT RECOMMENDED
+#define NUM_MODES 6 // Number of modes. MORE THAN 10 NOT RECOMMENDED
 
-// Names of each mode
+/* Name your modes here! */
 char modes[NUM_MODES][20] = { "Discord", "Media", "Volume", "Numbers", "Lower F", "Upper F" };
 
 // Keypad button definitions
@@ -42,7 +43,7 @@ char keys[ROWS][COLS] = {
 byte rowPins[ROWS] = {16, 10}; // Connections for the row pinouts of the kpd
 byte colPins[COLS] = {9, 8, 7, 6, 5}; // Connections for the column pinouts of the kpd
 
-uint8_t activeModes[ROWS] = { 0, 0 }; // Store the active mode for each row
+int activeModes[ROWS] = { 0, 0 }; // Store the active mode for each row
 uint8_t activeRow = 0;      // Row that is/was being edited
 
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
@@ -69,6 +70,7 @@ void consumerPress(ConsumerKeycode key, bool press) {
 
 /**************************************
  * Set your macros here!
+ * 
  * @note Depending on the key use keyPress() or consumerPress().
  *  For the most part, keys typically on a keyboard will
  *  use keyPress(), and extra keys (media) will use
@@ -81,8 +83,8 @@ void consumerPress(ConsumerKeycode key, bool press) {
  *************************************/
 
 void determineKey(char key, bool press) {
-  uint8_t keyRow;
-  uint8_t keyCol;
+  int keyRow;
+  int keyCol;
   // Get the key's column and row
   for (int r=0; r<ROWS; r++)
   {
@@ -122,7 +124,7 @@ void determineKey(char key, bool press) {
       break;
     // Volume
     case 2:
-      switch (key)
+      switch (keyCol)
       {
         case 0: consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press); break;
         case 1: consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press); break;
@@ -133,7 +135,7 @@ void determineKey(char key, bool press) {
       break;
     // Numbers
     case 3:
-      switch (key)
+      switch (keyCol)
       {
         case 0: keyPress(KEY_1, press); break;
         case 1: keyPress(KEY_2, press); break;
@@ -144,7 +146,7 @@ void determineKey(char key, bool press) {
       break;
     // Lower F
     case 4:
-      switch (key)
+      switch (keyCol)
       {
         case 0: keyPress(KEY_F1, press); break;
         case 1: keyPress(KEY_F2, press); break;
@@ -155,7 +157,7 @@ void determineKey(char key, bool press) {
       break;
     // Upper F
     case 5:
-      switch (key)
+      switch (keyCol)
       {
         case 0: keyPress(KEY_F8, press); break;
         case 1: keyPress(KEY_F9, press); break;
@@ -255,9 +257,16 @@ void handleKnob() {
       Serial.println("UP");
       activeModes[activeRow]++;
       if (activeModes[activeRow] > NUM_MODES-1) activeModes[activeRow] = 0;
+      refreshDisplay();
     }
-    
-    refreshDisplay();
+    else if (ENCODER_AS_VOLUME)
+    {
+      Consumer.write(HID_CONSUMER_VOLUME_INCREMENT);
+    }
+    else
+    {
+      refreshDisplay();
+    }
     
     oldKnobPosition = newKnobPosition;
   }
@@ -267,10 +276,17 @@ void handleKnob() {
     {
       Serial.println("DOWN");
       activeModes[activeRow]--;
-      if (activeModes[activeRow] == 255) activeModes[activeRow] = NUM_MODES-1;
+      if (activeModes[activeRow] < 0) activeModes[activeRow] = NUM_MODES-1;
+      refreshDisplay();
     }
-
-    refreshDisplay();
+    else if (ENCODER_AS_VOLUME)
+    {
+      Consumer.write(HID_CONSUMER_VOLUME_DECREMENT);
+    }
+    else
+    {
+      refreshDisplay();
+    }
     
     oldKnobPosition = newKnobPosition;
   }
@@ -305,6 +321,7 @@ void screenSaver() {
     display.print(" ");
     display.println(modes[activeModes[i]]);
   }
+  editMode = false;
   display.display();
 }
 
@@ -355,6 +372,5 @@ void loop() {
   {
     Serial.println("Screen saver");
     screenSaver();
-    editMode = false;
   }
 }
