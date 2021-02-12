@@ -8,9 +8,13 @@
 #include <HID-Project.h>
 #include <EEPROM.h>
 
+#include "config.h"
+
 /***********************************************
  * Arduino Keypad with OLED and Modes
  * by Gabe Haarberg
+ * 
+ * https://github.com/Gabe-H/Arduino-Keypad-OLED-and-Modes
  * 
  * For customization, change the keypad and mode settings on the next few lines,
  * and specific commands further down in `determineKey()`. Refer to HID-Project
@@ -20,36 +24,12 @@
  * 
  **********************************************/
 
-#define KNOB_BUTTON A0
-#define KNOB_CLK 15
-#define KNOB_DT 14
 
-#define ROWS 2 // Rows of buttons
-#define COLS 5 // Columns of buttons
-#define SCREENSAVER_TIMEOUT 2500 // Timeout until screensaver (ms)
-#define ENCODER_AS_VOLUME true // Will use encoder for volume when on idle, press to enter editing
-
-#define NUM_MODES 6 // Number of modes. MORE THAN 10 NOT RECOMMENDED
-
-// #define USE_SERIAL true // Uncomment for verbose keying. Tends to lead to performance issues.
-
-/* Name your modes here! */
-const char modes[NUM_MODES][20] = { "Discord", "Media", "Volume", "Numbers", "Lower F", "Upper F" };
-
-// Keypad button definitions
-char keys[ROWS][COLS] = {
-{'5','6','7','8','9'},
-{'0','1','2','3','4'}
-};
-
-byte rowPins[ROWS] = {16, 10}; // Connections for the row pinouts of the kpd
-byte colPins[COLS] = {9, 8, 7, 6, 5}; // Connections for the column pinouts of the kpd
-
-int activeModes[ROWS] = { 0, 0 }; // Store the active mode for each row
-uint8_t activeRow = 0;      // Row that is/was being edited
+int activeModes[ROWS]; // Store the active mode for each row
+int activeRow = 0;      // Row that is/was being edited
 
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
-Adafruit_SSD1306 display(128, 64, &Wire);
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire);
 Encoder enc(KNOB_CLK, KNOB_DT);
 
 String msg; // Placeholder for Serial output per action
@@ -58,35 +38,21 @@ long oldKnobPosition;
 bool editMode;
 unsigned long displayTimeout;
 
+
 // Makes button actions with the Keyboard library
 void keyPress(KeyboardKeycode key, bool press) {
-  if (press) Keyboard.press(key);
-  else Keyboard.release(key);
+  press ? Keyboard.press(key) : Keyboard.release(key);
 }
 
 // Makes button actions with the Consumer library
 void consumerPress(ConsumerKeycode key, bool press) {
-  if (press) Consumer.press(key);
-  else Consumer.release(key);
+  press ? Consumer.press(key) : Consumer.release(key);
 }
-
-/**************************************
- * Set your macros here!
- * 
- * @note Depending on the key use keyPress() or consumerPress().
- *  For the most part, keys typically on a keyboard will
- *  use keyPress(), and extra keys (media) will use
- *  consumerPress().
- * @note Only make integer cases for each *column* in your keypad,
- *  not every key on the pad.
- * 
- * You may always refer to the HID-Project docs for further
- * clarification
- *************************************/
 
 void determineKey(char key, bool press) {
   int keyRow;
   int keyCol;
+
   // Get the key's column and row
   for (int r=0; r<ROWS; r++)
   {
@@ -99,75 +65,39 @@ void determineKey(char key, bool press) {
       }
     }
   }
-  // Activate based on the row's mode
-  switch(activeModes[keyRow])
+  #ifdef DEBUG_SERIAL
+    if (press)
+    {
+      Serial.print(keyCol);
+      Serial.print(", ");
+      Serial.println(keyRow);
+    }
+  #endif
+
+  int myType = buttonType[ activeModes[keyRow] ][ keyCol ];
+  if (myType == K)
   {
-    // Discord
-    case 0:
-      switch (keyCol)
-      {
-        case 0: keyPress(KEY_F13, press); break;
-        case 1: keyPress(KEY_F14, press); break;
-        case 2: keyPress(KEY_F15, press); break;
-        case 3: keyPress(KEY_F16, press); break;
-        case 4: keyPress(KEY_F17, press); break;
-      }
-      break;
-    // Media
-    case 1:
-      switch (keyCol)
-      {
-        case 0: consumerPress(MEDIA_REWIND, press); break;
-        case 1: consumerPress(MEDIA_PREVIOUS, press); break;
-        case 2: consumerPress(MEDIA_PLAY_PAUSE, press); break;
-        case 3: consumerPress(MEDIA_NEXT, press); break;
-        case 4: consumerPress(MEDIA_FAST_FORWARD, press); break;
-      }
-      break;
-    // Volume
-    case 2:
-      switch (keyCol)
-      {
-        case 0: consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press); break;
-        case 1: consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press); break;
-        case 2: consumerPress(HID_CONSUMER_MUTE, press); break;
-        case 3: consumerPress(HID_CONSUMER_VOLUME_DECREMENT, press); break;
-        case 4: consumerPress(HID_CONSUMER_VOLUME_INCREMENT, press); break;
-      }
-      break;
-    // Numbers
-    case 3:
-      switch (keyCol)
-      {
-        case 0: keyPress(KEY_1, press); break;
-        case 1: keyPress(KEY_2, press); break;
-        case 2: keyPress(KEY_3, press); break;
-        case 3: keyPress(KEY_4, press); break;
-        case 4: keyPress(KEY_5, press); break;
-      }
-      break;
-    // Lower F
-    case 4:
-      switch (keyCol)
-      {
-        case 0: keyPress(KEY_F1, press); break;
-        case 1: keyPress(KEY_F2, press); break;
-        case 2: keyPress(KEY_F3, press); break;
-        case 3: keyPress(KEY_F4, press); break;
-        case 4: keyPress(KEY_F5, press); break;
-      }
-      break;
-    // Upper F
-    case 5:
-      switch (keyCol)
-      {
-        case 0: keyPress(KEY_F8, press); break;
-        case 1: keyPress(KEY_F9, press); break;
-        case 2: keyPress(KEY_F10, press); break;
-        case 3: keyPress(KEY_F11, press); break;
-        case 4: keyPress(KEY_F12, press); break;
-      }
-      break;
+    KeyboardKeycode buttonKey = keyboardButtons[ activeModes[keyRow] ][ keyCol ];
+    #ifdef DEBUG_SERIAL
+      Serial.print("Keyboard: ");
+      Serial.println(buttonKey);
+      #endif
+    press ? Keyboard.press(buttonKey) : Keyboard.release(buttonKey);
+  }
+  else if (myType == C)
+  {
+    ConsumerKeycode buttonCon = consumerButtons[ activeModes[keyRow] ][ keyCol ];
+      press ? Consumer.press(buttonCon) : Consumer.release(buttonCon);
+      #ifdef DEBUG_SERIAL
+        Serial.print("Consumer: ");
+        Serial.println(buttonCon);
+        #endif
+  }
+  else if (myType == UNUSED)
+  {
+    #ifdef DEBUG_SERIAL
+      Serial.println("SKIPPING UNUSED KEYBIND");
+      #endif
   }
 }
 
@@ -175,7 +105,6 @@ void determineKey(char key, bool press) {
 //  used for the active mode of each row
 void saveEEPROM() {
   EEPROM.write(0, activeRow);
-  
   for (int i=0; i<ROWS; i++)
   {
     EEPROM.write(i+1, activeModes[i]);
@@ -190,7 +119,7 @@ void refreshDisplay() {
   display.clearDisplay();
   display.setTextSize(2);
   display.setCursor(0, 0);
-  display.println(modes[activeModes[activeRow]]);
+  display.println(modeNames[activeModes[activeRow]]);
 
   // The active editing row will be larger than the other row(s)
   for (int d=0; d<ROWS; d++)
@@ -236,13 +165,22 @@ void handleKeys() {
             msg = " RELEASED.";
             determineKey(kpd.key[i].kchar, false);
           break;
+          case HOLD:
+            msg = " HOLD.";
+            break;
+          case IDLE:
+            msg = " IDLE.";
+            break;
+          default:
+            msg = " ERROR (default).";
+            break;
         }
 
-        #ifdef USE_SERIAL
-        Serial.print("Key ");
-        Serial.print(kpd.key[i].kchar);
-        Serial.println(msg);
-        #endif
+        #ifdef DEBUG_SERIAL
+          Serial.print("Key ");
+          Serial.print(kpd.key[i].kchar);
+          Serial.println(msg);
+          #endif
       }
     }
   }
@@ -262,13 +200,13 @@ void handleKnob() {
       if (activeModes[activeRow] > NUM_MODES-1) activeModes[activeRow] = 0;
       refreshDisplay();
     }
-    else if (ENCODER_AS_VOLUME)
-    {
-      Consumer.write(HID_CONSUMER_VOLUME_INCREMENT);
-    }
     else
     {
-      refreshDisplay();
+      #ifdef ENCODER_AS_VOLUME
+        Consumer.write(HID_CONSUMER_VOLUME_INCREMENT);
+        #else
+        refreshDisplay();
+        #endif
     }
     
     oldKnobPosition = newKnobPosition;
@@ -281,13 +219,13 @@ void handleKnob() {
       if (activeModes[activeRow] < 0) activeModes[activeRow] = NUM_MODES-1;
       refreshDisplay();
     }
-    else if (ENCODER_AS_VOLUME)
-    {
-      Consumer.write(HID_CONSUMER_VOLUME_DECREMENT);
-    }
     else
     {
+      #ifdef ENCODER_AS_VOLUME
+        Consumer.write(HID_CONSUMER_VOLUME_DECREMENT);
+      #else
       refreshDisplay();
+      #endif
     }
     
     oldKnobPosition = newKnobPosition;
@@ -320,24 +258,22 @@ void screenSaver() {
   for (int i=0; i<ROWS; i++)
   {
     display.print(" ");
-    display.println(modes[activeModes[i]]);
+    display.println(modeNames[activeModes[i]]);
   }
   editMode = false;
   display.display();
 }
 
 void setup() {
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
   EEPROM.begin();
 
-  // // UNCOMMENT THE NEXT LINES ON THE FIRST UPLOAD
-  //
-  // for (int i=0; i<16; i++)
-  // {
-  //   EEPROM.write(i, 0x00);
-  // }
-  //
-  // // END FIRST UPLOAD UNCOMMENT
+  #ifdef EEPROM_INIT
+    for (int i=0; i<16; i++)
+    {
+      EEPROM.write(i, 0x00);
+    }
+  #endif
 
   pinMode(KNOB_BUTTON, INPUT_PULLUP);
   oldKnobPosition = enc.read();
@@ -361,8 +297,8 @@ void setup() {
   displayTimeout = millis(); // Start screensaver timer
   Keyboard.begin();
   Consumer.begin();
-  #ifdef USE_SERIAL
-    Serial.begin(9600);
+  #ifdef DEBUG_SERIAL
+    Serial.begin(SERIAL_BAUD);
   #endif
 }
 
