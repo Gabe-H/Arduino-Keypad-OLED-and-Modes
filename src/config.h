@@ -31,6 +31,7 @@
 // #define EEPROM_INIT
 
 #define KNOB_BUTTON A0
+#define KNOB_BUTTON_TYPE INPUT_PULLUP
 #define KNOB_CLK 15
 #define KNOB_DT 14
 
@@ -64,25 +65,25 @@ char keys[ROWS][COLS] = {
 const char modeNames[NUM_MODES][10] = { "Discord", "Media", "Volume", "F Keys"};
 
 
-#define K 0
-#define C 1
-#define UNUSED 2
+#define KEY 0x0
+#define CON 0x1
+#define UNUSED 0x2
 /** Table of key types (Keyboard vs Consumer)
  * K for Keybaord
  * C for Consumer
  */
 uint8_t buttonType[NUM_MODES][COLS] = {
-  {
-    K, K, K, K, K
+  { // Discord
+    KEY, KEY, KEY, KEY, KEY
   },
-  {
-    C, C, C, C, C
+  { // Media
+    CON, CON, CON, CON, CON
   },
-  {
-    C, C, C, C, C
+  { // Volume
+    CON, CON, CON, CON, CON
   },
-  {
-    K, K, K, K, K
+  { // F Keys
+    KEY, KEY, KEY, KEY, KEY
   }
 };
 

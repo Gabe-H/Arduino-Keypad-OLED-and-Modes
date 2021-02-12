@@ -74,30 +74,40 @@ void determineKey(char key, bool press) {
     }
   #endif
 
+  // Determine what function to use on keybind from the buttonType table
   int myType = buttonType[ activeModes[keyRow] ][ keyCol ];
-  if (myType == K)
+  switch (myType)
   {
-    KeyboardKeycode buttonKey = keyboardButtons[ activeModes[keyRow] ][ keyCol ];
-    #ifdef DEBUG_SERIAL
-      Serial.print("Keyboard: ");
-      Serial.println(buttonKey);
-      #endif
-    press ? Keyboard.press(buttonKey) : Keyboard.release(buttonKey);
-  }
-  else if (myType == C)
-  {
-    ConsumerKeycode buttonCon = consumerButtons[ activeModes[keyRow] ][ keyCol ];
-      press ? Consumer.press(buttonCon) : Consumer.release(buttonCon);
+    // Keyboard library keys
+    case KEY:
+    {
+      KeyboardKeycode myKey = keyboardButtons[ activeModes[keyRow] ][ keyCol ];
+      #ifdef DEBUG_SERIAL
+        Serial.print("Keyboard: ");
+        Serial.println(myKey);
+        #endif
+      press ? Keyboard.press(myKey) : Keyboard.release(myKey);
+    }
+    break;
+    // Consumer library keys
+    case CON:
+    {
+      ConsumerKeycode myKey = consumerButtons[ activeModes[keyRow] ][ keyCol ];
       #ifdef DEBUG_SERIAL
         Serial.print("Consumer: ");
-        Serial.println(buttonCon);
+        Serial.println(myKey);
         #endif
-  }
-  else if (myType == UNUSED)
-  {
-    #ifdef DEBUG_SERIAL
-      Serial.println("SKIPPING UNUSED KEYBIND");
-      #endif
+      press ? Consumer.press(myKey) : Consumer.release(myKey);
+    }
+    break;
+    // Marked as unused
+    case UNUSED:
+    {
+      #ifdef DEBUG_SERIAL
+        Serial.println("Unused");
+        #endif
+    }
+    break;
   }
 }
 
@@ -158,22 +168,27 @@ void handleKeys() {
       {
         switch (kpd.key[i].kstate) {  // Report active key state : IDLE, PRESSED, HOLD, or RELEASED
           case PRESSED:
+          {
             msg = " PRESSED.";
             determineKey(kpd.key[i].kchar, true);
+          }
           break;
           case RELEASED:
+          {
             msg = " RELEASED.";
             determineKey(kpd.key[i].kchar, false);
+          }
           break;
           case HOLD:
+          {
             msg = " HOLD.";
-            break;
+          }
+          break;
           case IDLE:
+          {
             msg = " IDLE.";
-            break;
-          default:
-            msg = " ERROR (default).";
-            break;
+          }
+          break;
         }
 
         #ifdef DEBUG_SERIAL
@@ -223,9 +238,9 @@ void handleKnob() {
     {
       #ifdef ENCODER_AS_VOLUME
         Consumer.write(HID_CONSUMER_VOLUME_DECREMENT);
-      #else
-      refreshDisplay();
-      #endif
+        #else
+        refreshDisplay();
+        #endif
     }
     
     oldKnobPosition = newKnobPosition;
@@ -273,9 +288,9 @@ void setup() {
     {
       EEPROM.write(i, 0x00);
     }
-  #endif
+    #endif
 
-  pinMode(KNOB_BUTTON, INPUT_PULLUP);
+  pinMode(KNOB_BUTTON, KNOB_BUTTON_TYPE);
   oldKnobPosition = enc.read();
   activeRow = EEPROM.read(0);
 
@@ -299,7 +314,7 @@ void setup() {
   Consumer.begin();
   #ifdef DEBUG_SERIAL
     Serial.begin(SERIAL_BAUD);
-  #endif
+    #endif
 }
 
 void loop() {
