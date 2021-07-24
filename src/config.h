@@ -44,8 +44,8 @@
 #define ROWS 2 // Rows of buttons
 #define COLS 5 // Columns of buttons
 
-byte rowPins[ROWS] = {9, 16}; // Connections for the row pinouts of the kpd
-byte colPins[COLS] = {4, 5, 6, 7, 8}; // Connections for the column pinouts of the kpd
+byte rowPins[ROWS] = { 9, 16 }; // Connections for the row pinouts of the kpd
+byte colPins[COLS] = { 4, 5, 6, 7, 8 }; // Connections for the column pinouts of the kpd
 
 /**
  * Keypad button definitions
@@ -56,72 +56,78 @@ char keys[ROWS][COLS] = {
 {'5','6','7','8','9'}
 };
 
-#define NUM_MODES 4 // Number of modes
+#define NUM_MODES 6 // Number of modes
 
 /**
  *  Name your modes here!
  * @note Must be 10 chars MAX to fit on the screen!
  */
-const char modeNames[NUM_MODES][10] = { "Discord", "Media", "Volume", "F Keys"};
+const char modeNames[NUM_MODES][10] = { "Discord", "Media", "Volume", "F Keys", "Debug", "Plat. IO"};
 
 
 #define KEY 0x0
 #define CON 0x1
 #define UNUSED 0x2
-/** Table of key types (Keyboard vs Consumer)
- * K for Keybaord
- * C for Consumer
- */
-uint8_t buttonType[NUM_MODES][COLS] = {
-  { // Discord
-    KEY, KEY, KEY, KEY, KEY
-  },
-  { // Media
-    CON, CON, CON, CON, CON
-  },
-  { // Volume
-    CON, CON, CON, CON, CON
-  },
-  { // F Keys
-    KEY, KEY, KEY, KEY, KEY
-  }
+
+#define K_NULL KEY_RESERVED
+#define C_NULL HID_CONSUMER_UNASSIGNED
+
+bool modCtrl[NUM_MODES][COLS] = {
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, true, false, false },
+  { true, true, true, false, false }
+};
+
+bool modShift[NUM_MODES][COLS] = {
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, true, true, true, false },
+  { false, false, false, false, false }
+};
+
+bool modAlt[NUM_MODES][COLS] = {
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, false },
+  { false, false, false, false, true },
+  { true, true, true, false, false }
 };
 
 /**
  * Keyboard library keybinds
- * @note MUST USE DEFINITIONS FROM HID-Project - ImprovedKeylayoutsUS.h
+ * MUST USE DEFINITIONS FROM HID-Project - ImprovedKeylayoutsUS.h
  */
 KeyboardKeycode keyboardButtons[NUM_MODES][COLS] = {
-  // Discord
-  {
-    KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17
-  },
-  // Media (consumer)
-  {},
-  // Volume (consumer)
-  {},
-  // F Keys
-  {
-    KEY_F1, KEY_F5, KEY_F10, KEY_F11, KEY_F12
-  }
+  { KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17 },
+  { K_NULL, K_NULL, K_NULL, K_NULL, K_NULL },
+  { K_NULL, K_NULL, K_NULL, K_NULL, K_NULL },
+  { KEY_F1, KEY_F5, KEY_F10, KEY_F11, KEY_F12 },
+  { KEY_F5, KEY_F5, KEY_F5, KEY_F12, KEY_F12 },
+  { KEY_U, KEY_B, KEY_S, K_NULL, K_NULL }
 };
 
 /**
  * Consumer (media) library keybinds
- * @note MUST USE DEFINITIONS FROM ConsumerAPI.h
+ * MUST USE DEFINITIONS FROM ConsumerAPI.h
  */
 ConsumerKeycode consumerButtons[NUM_MODES][COLS] = {
-  // Discord (Keyboard)
-  {},
-  // Media
-  {
-    MEDIA_REWIND, MEDIA_PREVIOUS, MEDIA_PLAY_PAUSE, MEDIA_NEXT, MEDIA_FAST_FORWARD
-  },
+  { C_NULL, C_NULL, C_NULL, C_NULL, C_NULL },
+  { MEDIA_REWIND, MEDIA_PREVIOUS, MEDIA_PLAY_PAUSE, MEDIA_NEXT, MEDIA_FAST_FORWARD },
   // Volume
   {
     HID_CONSUMER_VOLUME_DECREMENT, HID_CONSUMER_VOLUME_INCREMENT, HID_CONSUMER_MUTE, 
     HID_CONSUMER_VOLUME_DECREMENT, HID_CONSUMER_VOLUME_INCREMENT
   },
   // F Keys (Keyboard)
-  {}
+  { C_NULL, C_NULL, C_NULL, C_NULL, C_NULL },
+  // Debug
+  { C_NULL, C_NULL, C_NULL, C_NULL, C_NULL },
+  // Platform IO
+  { C_NULL, C_NULL, C_NULL, C_NULL, C_NULL }
 };

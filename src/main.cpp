@@ -49,7 +49,8 @@ void consumerPress(ConsumerKeycode key, bool press) {
   press ? Consumer.press(key) : Consumer.release(key);
 }
 
-void determineKey(char key, bool press) {
+void determineKey(char key, bool press)
+{
   int keyRow;
   int keyCol;
 
@@ -65,49 +66,24 @@ void determineKey(char key, bool press) {
       }
     }
   }
-  #ifdef DEBUG_SERIAL
-    if (press)
-    {
-      Serial.print(keyCol);
-      Serial.print(", ");
-      Serial.println(keyRow);
-    }
-  #endif
 
-  // Determine what function to use on keybind from the buttonType table
-  int myType = buttonType[ activeModes[keyRow] ][ keyCol ];
-  switch (myType)
+  if (press)
   {
-    // Keyboard library keys
-    case KEY:
-    {
-      KeyboardKeycode myKey = keyboardButtons[ activeModes[keyRow] ][ keyCol ];
-      #ifdef DEBUG_SERIAL
-        Serial.print("Keyboard: ");
-        Serial.println(myKey);
-        #endif
-      press ? Keyboard.press(myKey) : Keyboard.release(myKey);
-    }
-    break;
-    // Consumer library keys
-    case CON:
-    {
-      ConsumerKeycode myKey = consumerButtons[ activeModes[keyRow] ][ keyCol ];
-      #ifdef DEBUG_SERIAL
-        Serial.print("Consumer: ");
-        Serial.println(myKey);
-        #endif
-      press ? Consumer.press(myKey) : Consumer.release(myKey);
-    }
-    break;
-    // Marked as unused
-    case UNUSED:
-    {
-      #ifdef DEBUG_SERIAL
-        Serial.println("Unused");
-        #endif
-    }
-    break;
+    if (modCtrl[ activeModes[keyRow] ][ keyCol ]) Keyboard.press(KEY_LEFT_CTRL);
+    if (modShift[ activeModes[keyRow] ][ keyCol ]) Keyboard.press(KEY_LEFT_SHIFT);
+    if (modAlt[ activeModes[keyRow] ][ keyCol ]) Keyboard.press(KEY_LEFT_ALT);
+
+    Keyboard.press(keyboardButtons[ activeModes[keyRow] ][ keyCol ]);
+    Consumer.press(consumerButtons[ activeModes[keyRow] ][ keyCol ]);
+  }
+  else
+  {
+    if (modCtrl[ activeModes[keyRow] ][ keyCol ]) Keyboard.release(KEY_LEFT_CTRL);
+    if (modShift[ activeModes[keyRow] ][ keyCol ]) Keyboard.release(KEY_LEFT_SHIFT);
+    if (modAlt[ activeModes[keyRow] ][ keyCol ]) Keyboard.release(KEY_LEFT_ALT);
+
+    Keyboard.release(keyboardButtons[ activeModes[keyRow] ][ keyCol ]);
+    Consumer.release(consumerButtons[ activeModes[keyRow] ][ keyCol ]);
   }
 }
 
@@ -248,6 +224,7 @@ void handleKnob() {
   // Button logic
   if (newButtonState != oldButtonState)
   {
+    delay(10);
     if (newButtonState == LOW)
     {
       if (editMode)
