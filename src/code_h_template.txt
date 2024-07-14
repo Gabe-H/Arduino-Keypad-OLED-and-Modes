@@ -1,0 +1,11 @@
+#ifndef CODE_H
+#define CODE_H
+
+#include <Keypad.h>
+
+#define CODE_1 KEY_<FIRST DIGIT>
+#define CODE_2 KEY_<SECOND DIGIT>
+#define CODE_3 KEY_<THIRD DIGIT>
+#define CODE_4 KEY_<FOURTH DIGIT>
+
+#endif

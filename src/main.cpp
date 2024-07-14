@@ -9,43 +9,46 @@
 #include <EEPROM.h>
 
 #include "config.h"
+#include "code.h"
 
 /***********************************************
  * Arduino Keypad with OLED and Modes
  * by Gabe Haarberg
- * 
+ *
  * https://github.com/Gabe-H/Arduino-Keypad-OLED-and-Modes
- * 
+ *
  * For customization, change the keypad and mode settings on the next few lines,
  * and specific commands further down in `determineKey()`. Refer to HID-Project
  * docs for keybind syntax.
- * 
- * @note ON THE FIRST UPLOAD uncomment the EEPROM clearing. 
- * 
+ *
+ * @note ON THE FIRST UPLOAD uncomment the EEPROM clearing.
+ *
  **********************************************/
 
-
 int activeModes[ROWS]; // Store the active mode for each row
-int activeRow = 0;      // Row that is/was being edited
+int activeRow = 0;     // Row that is/was being edited
 
-Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+Keypad kpd = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire);
 Encoder enc(KNOB_CLK, KNOB_DT);
 
-String msg; // Placeholder for Serial output per action
+String msg;         // Placeholder for Serial output per action
 int oldButtonState; // Global placeholders
 long oldKnobPosition;
 bool editMode;
 unsigned long displayTimeout;
 
+void computerCode();
 
 // Makes button actions with the Keyboard library
-void keyPress(KeyboardKeycode key, bool press) {
+void keyPress(KeyboardKeycode key, bool press)
+{
   press ? Keyboard.press(key) : Keyboard.release(key);
 }
 
 // Makes button actions with the Consumer library
-void consumerPress(ConsumerKeycode key, bool press) {
+void consumerPress(ConsumerKeycode key, bool press)
+{
   press ? Consumer.press(key) : Consumer.release(key);
 }
 
@@ -55,9 +58,9 @@ void determineKey(char key, bool press)
   int keyCol;
 
   // Get the key's column and row
-  for (int r=0; r<ROWS; r++)
+  for (int r = 0; r < ROWS; r++)
   {
-    for (int c=0; c<COLS; c++)
+    for (int c = 0; c < COLS; c++)
     {
       if (key == keys[r][c])
       {
@@ -67,40 +70,54 @@ void determineKey(char key, bool press)
     }
   }
 
+  if (callbackKeys[activeModes[keyRow]][keyCol] && press)
+  {
+    computerCode();
+    return;
+  }
+
   if (press)
   {
-    if (modCtrl[ activeModes[keyRow] ][ keyCol ]) Keyboard.press(KEY_LEFT_CTRL);
-    if (modShift[ activeModes[keyRow] ][ keyCol ]) Keyboard.press(KEY_LEFT_SHIFT);
-    if (modAlt[ activeModes[keyRow] ][ keyCol ]) Keyboard.press(KEY_LEFT_ALT);
+    if (modCtrl[activeModes[keyRow]][keyCol])
+      Keyboard.press(KEY_LEFT_CTRL);
+    if (modShift[activeModes[keyRow]][keyCol])
+      Keyboard.press(KEY_LEFT_SHIFT);
+    if (modAlt[activeModes[keyRow]][keyCol])
+      Keyboard.press(KEY_LEFT_ALT);
 
-    Keyboard.press(keyboardButtons[ activeModes[keyRow] ][ keyCol ]);
-    Consumer.press(consumerButtons[ activeModes[keyRow] ][ keyCol ]);
+    Keyboard.press(keyboardButtons[activeModes[keyRow]][keyCol]);
+    Consumer.press(consumerButtons[activeModes[keyRow]][keyCol]);
   }
   else
   {
-    if (modCtrl[ activeModes[keyRow] ][ keyCol ]) Keyboard.release(KEY_LEFT_CTRL);
-    if (modShift[ activeModes[keyRow] ][ keyCol ]) Keyboard.release(KEY_LEFT_SHIFT);
-    if (modAlt[ activeModes[keyRow] ][ keyCol ]) Keyboard.release(KEY_LEFT_ALT);
+    if (modCtrl[activeModes[keyRow]][keyCol])
+      Keyboard.release(KEY_LEFT_CTRL);
+    if (modShift[activeModes[keyRow]][keyCol])
+      Keyboard.release(KEY_LEFT_SHIFT);
+    if (modAlt[activeModes[keyRow]][keyCol])
+      Keyboard.release(KEY_LEFT_ALT);
 
-    Keyboard.release(keyboardButtons[ activeModes[keyRow] ][ keyCol ]);
-    Consumer.release(consumerButtons[ activeModes[keyRow] ][ keyCol ]);
+    Keyboard.release(keyboardButtons[activeModes[keyRow]][keyCol]);
+    Consumer.release(consumerButtons[activeModes[keyRow]][keyCol]);
   }
 }
 
 // Index 0 is for the editing row, all following bytes are
 //  used for the active mode of each row
-void saveEEPROM() {
+void saveEEPROM()
+{
   EEPROM.write(0, activeRow);
-  for (int i=0; i<ROWS; i++)
+  for (int i = 0; i < ROWS; i++)
   {
-    EEPROM.write(i+1, activeModes[i]);
+    EEPROM.write(i + 1, activeModes[i]);
   }
 }
 
 // Shows the editing data on the screen.
 // Uses '-' and 'O' like a slider:
 // O----, --O--, ---O-
-void refreshDisplay() {
+void refreshDisplay()
+{
   // Reset all writing parameters
   display.clearDisplay();
   display.setTextSize(2);
@@ -108,12 +125,14 @@ void refreshDisplay() {
   display.println(modeNames[activeModes[activeRow]]);
 
   // The active editing row will be larger than the other row(s)
-  for (int d=0; d<ROWS; d++)
+  for (int d = 0; d < ROWS; d++)
   {
-    if (d == activeRow) display.setTextSize(2);
-    else display.setTextSize(1);
+    if (d == activeRow)
+      display.setTextSize(2);
+    else
+      display.setTextSize(1);
 
-    for (int i=0; i<NUM_MODES; i++)
+    for (int i = 0; i < NUM_MODES; i++)
     {
       if (i == activeModes[d])
       {
@@ -129,56 +148,59 @@ void refreshDisplay() {
 
   editMode = true; // Start screensaver timer
   displayTimeout = millis();
-  saveEEPROM(); // Save new settings to EEPROM
+  saveEEPROM();      // Save new settings to EEPROM
   display.display(); // Update the display
 }
 
 // On key state change, iterate and perform press or release
 //  for the active key
-void handleKeys() {
+void handleKeys()
+{
   if (kpd.getKeys())
   {
-    for (int i=0; i<LIST_MAX; i++)   // Scan the whole key list.
+    for (int i = 0; i < LIST_MAX; i++) // Scan the whole key list.
     {
-      if ( kpd.key[i].stateChanged )   // Only find keys that have changed state.
+      if (kpd.key[i].stateChanged) // Only find keys that have changed state.
       {
-        switch (kpd.key[i].kstate) {  // Report active key state : IDLE, PRESSED, HOLD, or RELEASED
-          case PRESSED:
-          {
-            msg = " PRESSED.";
-            determineKey(kpd.key[i].kchar, true);
-          }
-          break;
-          case RELEASED:
-          {
-            msg = " RELEASED.";
-            determineKey(kpd.key[i].kchar, false);
-          }
-          break;
-          case HOLD:
-          {
-            msg = " HOLD.";
-          }
-          break;
-          case IDLE:
-          {
-            msg = " IDLE.";
-          }
-          break;
+        switch (kpd.key[i].kstate)
+        { // Report active key state : IDLE, PRESSED, HOLD, or RELEASED
+        case PRESSED:
+        {
+          msg = " PRESSED.";
+          determineKey(kpd.key[i].kchar, true);
+        }
+        break;
+        case RELEASED:
+        {
+          msg = " RELEASED.";
+          determineKey(kpd.key[i].kchar, false);
+        }
+        break;
+        case HOLD:
+        {
+          msg = " HOLD.";
+        }
+        break;
+        case IDLE:
+        {
+          msg = " IDLE.";
+        }
+        break;
         }
 
-        #ifdef DEBUG_SERIAL
-          Serial.print("Key ");
-          Serial.print(kpd.key[i].kchar);
-          Serial.println(msg);
-          #endif
+#ifdef DEBUG_SERIAL
+        Serial.print("Key ");
+        Serial.print(kpd.key[i].kchar);
+        Serial.println(msg);
+#endif
       }
     }
   }
 }
 
 // Function dedicated to rotary encoder logic
-void handleKnob() {
+void handleKnob()
+{
   // Setup new reading variables
   long newKnobPosition = enc.read();
   int newButtonState = digitalRead(KNOB_BUTTON);
@@ -188,18 +210,19 @@ void handleKnob() {
     if (editMode)
     {
       activeModes[activeRow]++;
-      if (activeModes[activeRow] > NUM_MODES-1) activeModes[activeRow] = 0;
+      if (activeModes[activeRow] > NUM_MODES - 1)
+        activeModes[activeRow] = 0;
       refreshDisplay();
     }
     else
     {
-      #ifdef ENCODER_AS_VOLUME
-        Consumer.write(HID_CONSUMER_VOLUME_INCREMENT);
-        #else
-        refreshDisplay();
-        #endif
+#ifdef ENCODER_AS_VOLUME
+      Consumer.write(HID_CONSUMER_VOLUME_INCREMENT);
+#else
+      refreshDisplay();
+#endif
     }
-    
+
     oldKnobPosition = newKnobPosition;
   }
   if (newKnobPosition - oldKnobPosition == -4) // Was turned 1 click counter-clockwise
@@ -207,18 +230,19 @@ void handleKnob() {
     if (editMode)
     {
       activeModes[activeRow]--;
-      if (activeModes[activeRow] < 0) activeModes[activeRow] = NUM_MODES-1;
+      if (activeModes[activeRow] < 0)
+        activeModes[activeRow] = NUM_MODES - 1;
       refreshDisplay();
     }
     else
     {
-      #ifdef ENCODER_AS_VOLUME
-        Consumer.write(HID_CONSUMER_VOLUME_DECREMENT);
-        #else
-        refreshDisplay();
-        #endif
+#ifdef ENCODER_AS_VOLUME
+      Consumer.write(HID_CONSUMER_VOLUME_DECREMENT);
+#else
+      refreshDisplay();
+#endif
     }
-    
+
     oldKnobPosition = newKnobPosition;
   }
   // Button logic
@@ -230,7 +254,8 @@ void handleKnob() {
       if (editMode)
       {
         activeRow++;
-        if (activeRow > ROWS-1) activeRow = 0;
+        if (activeRow > ROWS - 1)
+          activeRow = 0;
       }
 
       refreshDisplay();
@@ -242,12 +267,13 @@ void handleKnob() {
 // Shows only the active modes for each row, top to bottom.
 // By standard will only have capacity for 3 rows, but delete the
 // first display.println(), and change display.setTextSize(1); for more capacity
-void screenSaver() {
+void screenSaver()
+{
   display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextSize(2);
   display.println();
-  for (int i=0; i<ROWS; i++)
+  for (int i = 0; i < ROWS; i++)
   {
     display.print(" ");
     display.println(modeNames[activeModes[i]]);
@@ -256,27 +282,30 @@ void screenSaver() {
   display.display();
 }
 
-void setup() {
+void setup()
+{
   display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
   EEPROM.begin();
 
-  #ifdef EEPROM_INIT
-    for (int i=0; i<16; i++)
-    {
-      EEPROM.write(i, 0x00);
-    }
-    #endif
+#ifdef EEPROM_INIT
+  for (int i = 0; i < 16; i++)
+  {
+    EEPROM.write(i, 0x00);
+  }
+#endif
 
   pinMode(KNOB_BUTTON, KNOB_BUTTON_TYPE);
   oldKnobPosition = enc.read();
   activeRow = EEPROM.read(0);
 
   // Get saved modes per row
-  for (int i=0; i<ROWS; i++)
+  for (int i = 0; i < ROWS; i++)
   {
-    uint8_t read = EEPROM.read(i+1);
-    if (read != 0) activeModes[i] = read;
-    else activeModes[i] = 0;
+    uint8_t read = EEPROM.read(i + 1);
+    if (read != 0)
+      activeModes[i] = read;
+    else
+      activeModes[i] = 0;
   }
 
   // Initiate SSD1306 OLED
@@ -289,18 +318,48 @@ void setup() {
   displayTimeout = millis(); // Start screensaver timer
   Keyboard.begin();
   Consumer.begin();
-  #ifdef DEBUG_SERIAL
-    Serial.begin(SERIAL_BAUD);
-    #endif
+#ifdef DEBUG_SERIAL
+  Serial.begin(SERIAL_BAUD);
+#endif
 }
 
-void loop() {
+void loop()
+{
   handleKeys();
   handleKnob();
-  
+
   // If the display is being edited and it has been more than the specified ms
   if (editMode && (millis() - displayTimeout) > SCREENSAVER_TIMEOUT)
   {
     screenSaver();
   }
+}
+
+void computerCode()
+{
+  const int pressDelay = 10;
+  keyPress(KEY_SPACE, true);
+  delay(150);
+  keyPress(KEY_SPACE, false);
+  delay(150);
+
+  keyPress(CODE_1, true);
+  delay(pressDelay);
+  keyPress(CODE_1, false);
+  delay(pressDelay);
+
+  keyPress(CODE_2, true);
+  delay(pressDelay);
+  keyPress(CODE_2, false);
+  delay(pressDelay);
+
+  keyPress(CODE_3, true);
+  delay(pressDelay);
+  keyPress(CODE_3, false);
+  delay(pressDelay);
+
+  keyPress(CODE_4, true);
+  delay(pressDelay);
+  keyPress(CODE_4, false);
+  delay(pressDelay);
 }
